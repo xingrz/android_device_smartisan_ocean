@@ -78,10 +78,10 @@ bt.max.hfpclient.connections=1
 # System property for cabl
 ro.qualcomm.cabl=2
 ro.sf.lcd_density=400
-ro.qualcomm.display.paneltype=2
-ro.qualcomm.foss=1
-config.foss.xml=1
-config.foss.path=/vendor/etc/FOSSConfig.xml
+ro.vendor.display.paneltype=2
+ro.vendor.display.foss=1
+vendor.display.foss.config=1
+vendor.display.foss.config_path=/vendor/etc/FOSSConfig.xml
 # #0244392 madan@smartisan.com add to enable foss end.
 
 #
