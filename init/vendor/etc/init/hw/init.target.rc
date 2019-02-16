@@ -164,6 +164,12 @@ on boot
     chmod 0600 /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ea_enable
     chown system system /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ea_enable
 
+    # Keypad
+    chown system system /proc/keypad/volume_up
+    chown system system /proc/keypad/volume_down
+    chown system system /proc/keypad/power
+    chown system system /proc/keypad/shortcuts
+
 #start camera server as daemon
 #service qcamerasvr /system/bin/mm-qcamera-daemon
 #    class late_start
