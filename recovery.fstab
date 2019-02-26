@@ -29,3 +29,6 @@
 /abl            emmc    /dev/block/bootdevice/by-name/abl           flags=backup=1;display="Bootloader"
 /xbl            emmc    /dev/block/bootdevice/by-name/xbl           flags=backup=1;subpartitionof=/abl
 /xbl_config     emmc    /dev/block/bootdevice/by-name/xbl_config    flags=backup=1;subpartitionof=/abl
+
+# Removable storage
+/usb-otg        vfat    /dev/block/sda1         /dev/block/sda      flags=storage;wipeingui;removable
