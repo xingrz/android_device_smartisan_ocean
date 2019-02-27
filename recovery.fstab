@@ -21,3 +21,8 @@
 
 # Calibration
 /persist        emmc    /dev/block/bootdevice/by-name/persist       flags=backup=1;display="Persist"
+
+# Bootloader
+/abl            emmc    /dev/block/bootdevice/by-name/abl           flags=backup=1;display="Bootloader"
+/xbl            emmc    /dev/block/bootdevice/by-name/xbl           flags=backup=1;subpartitionof=/abl
+/xbl_config     emmc    /dev/block/bootdevice/by-name/xbl_config    flags=backup=1;subpartitionof=/abl
