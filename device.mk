@@ -137,6 +137,9 @@ PRODUCT_PACKAGES += \
     vendor.display.config@1.1.vendor \
     vendor.display.config@1.2.vendor
 
+PRODUCT_COPY_FILES += \
+    $(call find-copy-subdir-files,*,$(LOCAL_PATH)/display,$(TARGET_COPY_OUT_VENDOR)/etc)
+
 # DRM
 PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-impl \
