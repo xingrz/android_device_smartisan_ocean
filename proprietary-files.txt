@@ -6,6 +6,16 @@ lib/android.hardware.audio@2.0.so
 lib/libaudiohal.so
 lib64/android.hardware.audio@2.0.so
 lib64/libaudiohal.so
+vendor/lib/hw/android.hardware.audio@2.0-impl.so
+vendor/lib/hw/audio.primary.sdm710.so
+vendor/lib/libaudio_log_utils.so
+vendor/lib/libqahw.so
+vendor/lib/libqahwwrapper.so
+vendor/lib64/hw/android.hardware.audio@2.0-impl.so
+vendor/lib64/hw/audio.primary.sdm710.so
+vendor/lib64/libaudio_log_utils.so
+vendor/lib64/libqahw.so
+vendor/lib64/libqahwwrapper.so
 
 # Audio - ACDB
 vendor/etc/acdbdata/MTP/MTP_Bluetooth_cal.acdb
