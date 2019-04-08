@@ -48,6 +48,7 @@
 /dev/ipaNatTable          0660   radio      radio
 /dev/rmnet_ctrl           0660   usb        usb
 /dev/dpl_ctrl             0660   usb        usb
+/dev/usb_aoa              0660   root	    usb
 
 #permissions for CSVT
 /dev/smd11                0660   radio      radio

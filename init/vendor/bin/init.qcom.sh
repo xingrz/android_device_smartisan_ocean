@@ -395,10 +395,10 @@ buildvariant=`getprop ro.build.type`
 case "$buildvariant" in
     "userdebug" | "eng")
         #set default loglevel to KERN_INFO
-        echo "6 6 1 7" > /proc/sys/kernel/printk
+        echo "0 6 1 7" > /proc/sys/kernel/printk
         ;;
     *)
         #set default loglevel to KERN_WARNING
-        echo "4 4 1 4" > /proc/sys/kernel/printk
+        echo "0 4 1 4" > /proc/sys/kernel/printk
         ;;
 esac

@@ -35,7 +35,7 @@ on early-init
     mount debugfs debugfs /sys/kernel/debug
     chmod 0755 /sys/kernel/debug
     chown root system /dev/kmsg
-    chmod 0620 /dev/kmsg
+    chmod 0644 /dev/kmsg
 
 on init
     # Set permissions for persist partition
@@ -51,6 +51,11 @@ on init
     write /sys/fs/cgroup/memory/bg/memory.move_charge_at_immigrate 1
     chown root system /sys/fs/cgroup/memory/bg/tasks
     chmod 0660 /sys/fs/cgroup/memory/bg/tasks
+
+    #SMARTISAN_BEGIN (CCM4006: add se permission for modem prop)
+    #2018-04-04 cuipengfei: add modem shell script. M0239864.
+    exec u:r:qti_init_shell:s0 -- /vendor/bin/init.smartisan.modem_prop.sh
+    #SMARTISAN_END (CCM4006: add se permission for modem prop)
 
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing
@@ -290,12 +295,6 @@ on post-fs-data
     mkdir /data/connectivity 0771 system system
     chown system system /data/connectivity
 
-    # Create the directories used by DPM subsystem
-    mkdir /data/dpm 0771 system system
-    chown system system /data/dpm
-
-    mkdir /data/dpm/nsrm 0771 system system
-    chown system system /data/dpm/nsrm
 
     # Create directory used by audio subsystem
     mkdir /data/vendor/misc/audio 0770 audio audio
@@ -421,6 +420,9 @@ on post-fs-data
     #Create FTM_AP dir for factory test
     mkdir /data/FTM_AP 0775 system system
 
+    #start set bluetooth address to property
+    start propset-bdaddr
+
 service nqnfcinfo /system/vendor/bin/nqnfcinfo
     class late_start
     group nfc
@@ -477,12 +479,32 @@ on property:persist.sys.ssr.restart_level=*
     start ssr_setup
 
 on property:persist.sys.ssr.enable_ramdumps=1
+    write /sys/bus/msm_subsys/devices/subsys0/restart_level related
+    write /sys/bus/msm_subsys/devices/subsys1/restart_level related
+    write /sys/bus/msm_subsys/devices/subsys2/restart_level related
+    write /sys/bus/msm_subsys/devices/subsys3/restart_level related
+    write /sys/bus/msm_subsys/devices/subsys4/restart_level related
+    write /sys/bus/msm_subsys/devices/subsys5/restart_level related
     write /sys/module/subsystem_restart/parameters/enable_ramdumps 1
-    mkdir /data/ramdump 770 system system
+    mkdir /data/ramdump 777 system system
     start ss_ramdump
+
+on property:persist.sys.ssr.upload_dump=0
+    write /sys/module/subsystem_restart/parameters/upload_dump 0
+
+on property:persist.sys.ssr.upload_dump=1
+    write /sys/module/subsystem_restart/parameters/upload_dump 1
+
 
 on property:persist.sys.ssr.enable_ramdumps=0
     write /sys/module/subsystem_restart/parameters/enable_ramdumps 0
+    write /sys/bus/msm_subsys/devices/subsys0/restart_level system
+    write /sys/bus/msm_subsys/devices/subsys1/restart_level system
+    write /sys/bus/msm_subsys/devices/subsys2/restart_level system
+    write /sys/bus/msm_subsys/devices/subsys3/restart_level system
+    write /sys/bus/msm_subsys/devices/subsys4/restart_level system
+    write /sys/bus/msm_subsys/devices/subsys5/restart_level system
+    stop ss_ramdump
 
 on property:sys.boot_completed=1
     write /dev/kmsg "Boot completed "
@@ -494,6 +516,13 @@ on property:sys.boot_completed=1
     chown media audio /sys/kernel/wcd_cpe0/fw_name
 on property:persist.radio.atfwd.start=false
     stop atfwd
+
+# SMARTISAN_BEGIN: (CCM4004: Default disable ATFWD daemon)
+# 2017-04-28 houxiaofei: Default disable atfwd daemon, and controlled by prop. M0162771
+# 2018-04-08 lileibin : Porting the feature. M0239855
+on property:radio.atfwd.start=true
+    start atfwd
+# SMARTISAN_END: (CCM4004: Default disable ATFWD daemon)
 
 on property:radio.atfwd.start=false
     stop atfwd
@@ -532,6 +561,13 @@ service qcom-c_core-sh  /vendor/bin/init.qcom.class_core.sh
     user root
     oneshot
 
+#SMARTISAN_BEGIN:(CCM5024 Fix rild2 not start bug after encryption)
+#2018-03-16 cuipengfei: Bug fix. M0231648
+#2018-04-17 lileibin: Porting the feature. M0239991
+on property:vold.decrypt=trigger_restart_min_framework
+    start qcom-c_main-sh
+#SMARTISAN_END:(CCM5024 Fix rild2 not start bug after encryption)
+
 service qcom-c_main-sh /vendor/bin/init.class_main.sh
     class main
     user root
@@ -549,11 +585,6 @@ service cnd /system/vendor/bin/cnd
     class main
     user system
     group system wifi inet radio wakelock net_admin
-
-service dpmQmiMgr /system/vendor/bin/dpmQmiMgr
-    class main
-    user system
-    group system
 
 service irsc_util /vendor/bin/irsc_util "/vendor/etc/sec_config"
     class core
@@ -689,7 +720,7 @@ service wpa_supplicant /vendor/bin/hw/wpa_supplicant \
     -I/vendor/etc/wifi/p2p_supplicant_overlay.conf -N \
     -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
     -I/vendor/etc/wifi/wpa_supplicant_overlay.conf \
-    -O/data/misc/wifi/sockets -puse_p2p_group_interface=1 -dd \
+    -O/data/misc/wifi/sockets -puse_p2p_group_interface=1 \
     -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
 #   we will start as root and wpa_supplicant will switch to user wifi
 #   after setting up the capabilities required for WEXT
@@ -699,6 +730,12 @@ service wpa_supplicant /vendor/bin/hw/wpa_supplicant \
     socket wpa_wlan0 dgram 660 wifi wifi
     disabled
     oneshot
+
+service wifi_monitor /vendor/bin/monitor -i wlan0 -d
+    class late_start
+    socket mon_wlan0 dgram 0660 root wifi
+    user root
+    group root
 
 service vendor.wigig_supplicant /vendor/bin/hw/wpa_supplicant \
     -iwigig0 -Dnl80211 -c/data/vendor/wifi/wigig_supplicant.conf \
@@ -820,7 +857,7 @@ service wifi_ftmd /system/vendor/bin/wifi_ftmd
 on property:wifi.ftmd.load=true
     insmod /system/lib/modules/pronto/pronto_wlan.ko con_mode=5
 
-service cnss_diag /system/vendor/bin/cnss_diag -q -f
+service cnss_diag /system/vendor/bin/cnss_diag -q -f -b 128
     class main
     user system
     group system wifi inet net_admin sdcard_rw media_rw diag
@@ -833,8 +870,19 @@ service cnss-daemon /system/vendor/bin/cnss-daemon -n -l
     group system inet net_admin wifi
     capabilities NET_ADMIN
 
-on property:sys.powerctl=*
+on property:sys.shutdown.requested=*
     stop cnss-daemon
+
+service nds /system/xbin/nds
+    class late_start
+    user root
+    group system wifi
+    disabled
+    seclabel u:r:nds:s0
+	oneshot
+
+on property:net.wlan.fbstatus=ON
+    start nds
 
 service dhcpcd_bt-pan /system/bin/dhcpcd -BKLG
     class late_start
@@ -919,6 +967,11 @@ service wifi-sdio-on /vendor/bin/init.qcom.sdio.sh
     disabled
     oneshot
 
+service propset-bdaddr /vendor/bin/init.qcom.propset_bdaddr.sh
+    class core
+    user root
+    oneshot
+
 service wifi-crda /vendor/bin/init.crda.sh
    class late_start
    user root
@@ -941,6 +994,11 @@ service atfwd /vendor/bin/ATFWD-daemon
     class late_start
     user system
     group system radio
+# SMARTISAN_BEGIN: (CCM4004: Default disable ATFWD daemon)
+# 2017-04-28 houxiaofei: Default disable atfwd daemon, and controlled by prop. M0162771
+# 2018-04-08 lileibin : Porting the teature M0239855
+    disabled
+# SMARTISAN_END: (CCM4004: Default disable ATFWD daemon)
 
 service hostapd_fst /vendor/bin/hostapd -dd -g /data/vendor/wifi/hostapd/global /data/misc/wifi/hostapd.conf
     class late_start
@@ -1096,7 +1154,7 @@ service esepmdaemon /system/vendor/bin/esepmdaemon
     group nfc
 
 on charger
-    setprop persist.sys.usb.config mass_storage
+    setprop persist.sys.usb.config charging,adb
     load_system_props
     start qcom-post-boot
 
@@ -1111,22 +1169,6 @@ service poweroffhandler /system/vendor/bin/poweroffhandler
 on property:init.svc.surfaceflinger=restarting
     stop hwcomposer-2-1
     start hwcomposer-2-1
-
-# Logcat dump daemon, dumps logs to logdump partition
-service logdumpd /system/bin/logcat -b all -v threadtime -D -w /dev/block/bootdevice/by-name/logdump
-    class core
-    writepid /dev/cpuset/system-background/tasks
-    seclabel u:r:logdumpd:s0
-    disabled
-
-# Logdumpd is enabled only for userdebug non-perf build
-on property:ro.logdumpd.enabled=1
-    start logdumpd
-
-service time_daemon /system/vendor/bin/time_daemon
-    class main
-    user root
-    group root
 
 service qdmastatsd /system/vendor/bin/qdmastatsd
     class late_start
@@ -1153,9 +1195,11 @@ service power_off_alarm /vendor/bin/power_off_alarm
     disabled
     oneshot
 
-service chre /vendor/bin/chre
-    class late_start
-    user system
-    group system
-    socket chre seqpacket 0660 root system
-    shutdown critical
+#Smartisan BSP mazuyu modfiy to disable chre for power issue begin
+#service chre /vendor/bin/chre
+#    class late_start
+#    user system
+#    group system
+#    socket chre seqpacket 0660 root system
+#    shutdown critical
+#Smartisan BSP mazuyu modfiy to disable chre for power issue end

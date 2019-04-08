@@ -35,7 +35,10 @@ function configure_zram_parameters() {
     # Set Zram disk size to 512MB for 3GB and below targets, 1GB for above 3GB targets.
     if [ -f /sys/block/zram0/disksize ]; then
         if [ $MemTotal -gt 3145728 ]; then
-            echo 1073741824 > /sys/block/zram0/disksize
+            #Smartisan:Set Zram -33% of current mem total for Ocean 4G and 6G RAM
+            #zram_disksize(B)=MemTotal(KB)*1000/3
+            zram_disksize=$((MemTotal * 330))
+  	    echo $zram_disksize > /sys/block/zram0/disksize
         else
             echo 536870912 > /sys/block/zram0/disksize
         fi
@@ -96,7 +99,7 @@ else
     if [ "$arch_type" == "aarch64" ] && [ $MemTotal -gt 2097152 ]; then
         echo 10 > /sys/module/process_reclaim/parameters/pressure_min
         echo 1024 > /sys/module/process_reclaim/parameters/per_swap_size
-        echo "18432,23040,27648,32256,55296,80640" > /sys/module/lowmemorykiller/parameters/minfree
+        #echo "18432,23040,27648,32256,55296,80640" > /sys/module/lowmemorykiller/parameters/minfree
         echo 80640 > /sys/module/lowmemorykiller/parameters/vmpressure_file_min
     elif [ "$arch_type" == "aarch64" ] && [ $MemTotal -gt 1048576 ]; then
         echo 10 > /sys/module/process_reclaim/parameters/pressure_min
@@ -2001,11 +2004,11 @@ case "$target" in
             "336" | "337" | "347" | "360" | "370" | "371" )
 
             # Start Host based Touch processing
-            case "$hw_platform" in
-              "MTP" | "Surf" | "RCM" | "QRD" | "HDK" )
-                  start_hbtp
-                  ;;
-            esac
+            # case "$hw_platform" in
+              # "MTP" | "Surf" | "RCM" | "QRD" )
+                   #start_hbtp
+                  # ;;
+            # esac
 
       # Core control parameters on silver
       echo 0 0 0 0 1 1 > /sys/devices/system/cpu/cpu0/core_ctl/not_preferred
@@ -2041,7 +2044,7 @@ case "$target" in
       echo 85 > /sys/devices/system/cpu/cpu6/cpufreq/schedutil/hispeed_load
 
       echo "0:1209600" > /sys/module/cpu_boost/parameters/input_boost_freq
-      echo 40 > /sys/module/cpu_boost/parameters/input_boost_ms
+      echo 120 > /sys/module/cpu_boost/parameters/input_boost_ms
 
       # Set Memory parameters
       configure_memory_parameters
@@ -2098,7 +2101,7 @@ case "$target" in
             echo N > /sys/module/lpm_levels/L3/cpu7/ret/idle_enabled
 
             # cpuset parameters
-            echo 0-5 > /dev/cpuset/background/cpus
+            echo 0-1 > /dev/cpuset/background/cpus
             echo 0-5 > /dev/cpuset/system-background/cpus
 
             # Turn off scheduler boost at the end
@@ -2216,13 +2219,6 @@ case "$target" in
                 echo "mem_latency" > $memlat/governor
                 echo 10 > $memlat/polling_interval
                 echo 400 > $memlat/mem_latency/ratio_ceil
-            done
-
-            #Enable userspace governor for L3 cdsp nodes
-            for l3cdsp in /sys/class/devfreq/*qcom,l3-cdsp*
-            do
-                echo "userspace" > $l3cdsp/governor
-                chown -h system $l3cdsp/userspace/set_freq
             done
 
             echo "cpufreq" > /sys/class/devfreq/soc:qcom,mincpubw/governor
@@ -2780,7 +2776,7 @@ case "$target" in
 	echo 10 > /sys/class/devfreq/soc:qcom,mincpubw/polling_interval
 
 	# cpuset parameters
-        echo 0-3 > /dev/cpuset/background/cpus
+        echo 0-1 > /dev/cpuset/background/cpus
         echo 0-3 > /dev/cpuset/system-background/cpus
 
 	# Turn off scheduler boost at the end
@@ -3075,7 +3071,7 @@ case "$target" in
         start mpdecision
         echo 512 > /sys/block/mmcblk0/bdi/read_ahead_kb
     ;;
-    "msm8994" | "msm8992" | "msm8996" | "msm8998" | "sdm660" | "apq8098_latv" | "sdm845" | "sdm710" | "qcs605")
+    "msm8994" | "msm8992" | "msm8996" | "msm8998" | "sdm660" | "apq8098_latv" | "sdm845" | "sdm710")
         setprop sys.post_boot.parsed 1
     ;;
     "apq8084")

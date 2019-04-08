@@ -46,7 +46,7 @@ on charger
     write /sys/class/android_usb/android0/f_ffs/aliases adb
     enable qcom-usb-sh
     start qcom-usb-sh
-    setprop sys.usb.config mass_storage
+    setprop sys.usb.config charging,adb
 
 on boot
     write /sys/class/android_usb/android0/iSerial ${ro.serialno}
@@ -84,8 +84,10 @@ on boot
     mkdir /config/usb_gadget/g1/functions/ccid.ccid
     mkdir /config/usb_gadget/g1/functions/uac2.0
     mkdir /config/usb_gadget/g1/functions/uvc.0
+    mkdir /config/usb_gadget/g1/functions/aoa.aoa
     mkdir /config/usb_gadget/g1/configs/b.1 0770 shell shell
     mkdir /config/usb_gadget/g1/configs/b.1/strings/0x409 0770 shell shell
+    mkdir /config/usb_gadget/g1/functions/hid.charger
     write /config/usb_gadget/g1/os_desc/b_vendor_code 0x1
     write /config/usb_gadget/g1/os_desc/qw_sign "MSFT100"
     symlink /config/usb_gadget/g1/configs/b.1 /config/usb_gadget/g1/os_desc/b.1
@@ -1481,6 +1483,16 @@ on property:sys.usb.config=charging && property:sys.usb.configfs=0
     write /sys/class/android_usb/android0/idVendor 05C6
     write /sys/class/android_usb/android0/idProduct F006
     write /sys/class/android_usb/android0/functions charging
+    write /sys/class/android_usb/android0/enable 1
+    setprop sys.usb.state ${sys.usb.config}
+
+on property:sys.usb.config=charging,adb && property:sys.usb.configfs=0
+    write /sys/class/android_usb/android0/enable 0
+    write /sys/class/android_usb/android0/iSerial ${ro.serialno}
+    write /sys/class/android_usb/android0/idVendor 05C6
+    write /sys/class/android_usb/android0/idProduct F007
+    write /sys/class/android_usb/android0/f_ffs/aliases adb
+    write /sys/class/android_usb/android0/functions charging,adb
     write /sys/class/android_usb/android0/enable 1
     setprop sys.usb.state ${sys.usb.config}
 

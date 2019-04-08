@@ -165,8 +165,8 @@ case "$usb_config" in
 	              "msm8998" | "sdm660" | "apq8098_latv")
 		          setprop persist.sys.usb.config diag,serial_cdev,rmnet,adb
 		      ;;
-	              "sdm845" | "sdm710")
-		          setprop persist.sys.usb.config diag,serial_cdev,rmnet,dpl,adb
+	              "sdm845" | "sdm670")
+		          setprop persist.sys.usb.config diag,serial_cdev,rmnet,adb
 		      ;;
 	              *)
 		          setprop persist.sys.usb.config diag,adb
@@ -333,6 +333,15 @@ case "$target" in
 		;;
 esac
 
+cdromname="/system/etc/cdrom_install.iso"
+platformver=`cat /sys/devices/soc0/hw_platform`
+case "$target" in
+	"sdm670" | "sdm710" | "MTP")
+		echo "mounting usbcdrom lun"
+		echo $cdromname > /config/usb_gadget/g1/functions/mass_storage.0/lun.0/file
+		chmod 0444 /config/usb_gadget/g1/functions/mass_storage.0/lun.0/file
+esac
+
 #
 # Initialize RNDIS Diag option. If unset, set it to 'none'.
 #
@@ -363,7 +372,7 @@ if [ -d /config/usb_gadget/g1/functions/uvc.0 ]; then
 	cd /config/usb_gadget/g1/functions/uvc.0
 
 	echo 3072 > streaming_maxpacket
-	echo 5 > streaming_maxburst
+	echo 1 > streaming_maxburst
 	mkdir control/header/h
 	ln -s control/header/h control/class/fs/
 	ln -s control/header/h control/class/ss
