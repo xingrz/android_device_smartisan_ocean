@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+# Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -28,11 +28,8 @@
 #
 
 on early-init
-    exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules audio_apr audio_wglink audio_adsp_loader audio_q6_pdr audio_q6_notifier audio_q6 audio_usf audio_native audio_pinctrl_wcd audio_pinctrl_lpi audio_swr audio_platform audio_hdmi audio_wcd_spi audio_stub audio_digital_cdc audio_analog_cdc audio_aqt1000_cdc audio_msm_sdw audio_wcd_cpe audio_cpe_lsm audio_wcd9335 audio_machine_sdm710
+    exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules audio_apr audio_wglink audio_adsp_loader audio_q6_pdr audio_q6_notifier audio_q6 audio_usf audio_native audio_pinctrl_wcd audio_pinctrl_lpi audio_swr audio_platform audio_hdmi audio_wcd_spi audio_stub audio_digital_cdc audio_analog_cdc audio_msm_sdw audio_wcd_cpe audio_cpe_lsm audio_wcd9335 audio_machine_sdm710
     write /proc/sys/kernel/sched_boost 1
-    mkdir /firmware 0771 system system
-    mkdir /bt_firmware 0771 system system
-    mkdir /dsp 0771 media media
     symlink /data/tombstones /tombstones
 
 on init
@@ -53,12 +50,16 @@ on fs
     wait /dev/block/logic_data
 
     mount_all /vendor/etc/fstab.qcom
-    start time_daemon
-    restorecon_recursive /persist
-    mkdir /persist/data 0700 system system
+    chown root system /mnt/vendor/persist
+    chmod 0771 /mnt/vendor/persist
+    restorecon_recursive /mnt/vendor/persist
+    mkdir /mnt/vendor/persist/data 0700 system system
 
 on post-fs
-    start qseecomd
+    # set RLIMIT_MEMLOCK to 64MB
+    setrlimit 8 67108864 67108864
+
+    start vendor.qseecomd
     exec - system system -- /vendor/bin/init.qti.qseecomd.sh
     write /dev/ipa 1
 
@@ -74,9 +75,8 @@ on post-fs-data
     mkdir /tombstones/wcnss 0771 system system
     mkdir /tombstones/dsps 0771 system system
     mkdir /data/vendor/hbtp 0750 system system
-    mkdir /persist/qti_fp 0700 system system
-    mkdir /data/misc/seemp 0700 system system
     mkdir /data/vendor/tloc 0700 system drmrpc
+    mkdir /data/vendor/nnhal 0700 system system
 
 # For cpusets initialize for Silver Only first and then Silver + Gold
 # Silver Only configuration cannot work with 0-7
@@ -84,41 +84,11 @@ on boot
     chown system system /sys/kernel/hbtp/display_pwr
     start rmt_storage
     start rfs_access
-
     write /dev/cpuset/top-app/cpus 0-7
-    write /dev/cpuset/foreground/boost/cpus 0-4
-    write /dev/cpuset/foreground/cpus 0-4
-    write /dev/cpuset/background/cpus 0-2
-    write /dev/cpuset/system-background/cpus 0-3
-    write /dev/cpuset/bg_3rd_app/cpus 1-3
-    write /dev/cpuset/dex2oat/cpus 0-4
-    wirte /dev/cpuset/smart-system/cpus 0-4,6
-
-    chmod 0666 /sys/devices/platform/soc/ae90000.qcom,dp_display/dp_ctrl_status
-    chmod 0666 /sys/devices/platform/soc/ae90000.qcom,dp_display/dp_resolution
-    chown system system /sys/devices/platform/soc/ae90000.qcom,dp_display/dp_resolution
-    chmod 0644 /dev/goodix_fp
-    chown system system /dev/goodix_fp
-    chmod 0660 /dev/nvt_gpio_device
-    chown system system /dev/nvt_gpio_device
-    chown system system /sys/factoryTest/fingerprint
-    chmod 0666 /sys/factoryTest/fingerprint
-    chown system system /sys/factoryTest/nfc
-    chmod 0666 /sys/factoryTest/nfc
-    chown system system /sys/factoryTest/sensor
-    chmod 0666 /sys/factoryTest/sensor
-#0249208 bsp madan@smartisan.com add to support eye protect mode begin.
-    chown system system /sys/class/backlight/panel0-backlight/brightness
-    chmod 0666 /sys/class/backlight/panel0-backlight/brightness
-    chown system system /dev/color_panel
-    chmod 0666 /dev/color_panel
-    chown system system /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ie_level
-    chmod 0666 /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ie_level
-#0249208 bsp madan@smartisan.com add to support eye protect mode end.
-    chown system system /sys/class/leds/vibrator/amplitude
-    chown system system /sys/class/leds/vibrator/lra_auto_mode
-    chown system system /sys/class/leds/vibrator/play_mode
-    chown system system /sys/class/leds/vibrator/wf_samp
+    write /dev/cpuset/foreground/cpus 0-7
+    write /dev/cpuset/foreground/boost/cpus 0-7
+    write /dev/cpuset/background/cpus 0-7
+    write /dev/cpuset/system-background/cpus 0-7
 
 # Add a cpuset for the camera daemon
 # We want all cores for camera
@@ -160,35 +130,43 @@ on boot
     chmod 0600 /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ea_enable
     chown system system /sys/devices/platform/soc/soc\:qcom,dsi-display@0/msm_fb_ea_enable
 
+#USB controller configuration
+    setprop vendor.usb.rndis.func.name "gsi"
+    setprop vendor.usb.rmnet.func.name "gsi"
+    setprop vendor.usb.rmnet.inst.name "rmnet"
+    setprop vendor.usb.dpl.inst.name "dpl"
+    setprop sys.usb.configfs 1
+
 #start camera server as daemon
 #service qcamerasvr /system/bin/mm-qcamera-daemon
 #    class late_start
 #    user camera
 #    group camera system inet input graphics
 #pd-mapper
-service pd_mapper /vendor/bin/pd-mapper
+service vendor.pd_mapper /vendor/bin/pd-mapper
     class core
     user system
     group system
 
 #Peripheral manager
-service per_mgr /vendor/bin/pm-service
+service vendor.per_mgr /vendor/bin/pm-service
     class core
     user system
     group system
     ioprio rt 4
 
-service per_proxy /vendor/bin/pm-proxy
+service vendor.per_proxy /vendor/bin/pm-proxy
     class core
     user system
     group system
     disabled
 
-on property:init.svc.per_mgr=running
-    start per_proxy
+on property:init.svc.vendor.per_mgr=running
+    start vendor.per_proxy
 
-on property:sys.powerctl=*
-    stop per_proxy
+on property:sys.shutdown.requested=*
+    stop vendor.per_proxy
+    stop vendor.ims_rtp_daemon
 
 on boot
     chown system system /sys/class/leds/red/blink
@@ -196,7 +174,8 @@ on boot
     chown system system /sys/class/leds/blue/blink
 
 on charger
-    start hvdcp_opti
+    start vendor.hvdcp_opti
+    setprop sys.usb.configfs 1
 
 ## import cne init file
 #on post-fs
@@ -209,7 +188,7 @@ on charger
 #on property:persist.usb.chgdisabled=0
 #    write /sys/class/power_supply/battery/charging_enabled 1
 
-service qseecomd /vendor/bin/qseecomd
+service vendor.qseecomd /vendor/bin/qseecomd
     class core
     user root
     group root
@@ -245,10 +224,10 @@ service thermal-engine /system/vendor/bin/thermal-engine
 #    class core
 #    oneshot
 #
-service time_daemon /system/vendor/bin/time_daemon
-   class late_start
-   user root
-   group root
+#service time_daemon /system/vendor/bin/time_daemon
+#   class late_start
+#   user root
+#   group root
 
 service adsprpcd /vendor/bin/adsprpcd rootpd
    class main
@@ -261,7 +240,7 @@ service adsprpcd_audiopd /vendor/bin/adsprpcd audiopd
    group media
 
 service adsprpcd_sensorspd /vendor/bin/adsprpcd sensorspd
-   class main
+   class core
    user system
    group system
 
@@ -338,14 +317,14 @@ service cdsprpcd /vendor/bin/cdsprpcd
 #
 #
 ## imsdatadaemon starts with root and UID will be downgraded to SYSTEM.
-service imsqmidaemon /system/vendor/bin/imsqmidaemon
+service vendor.imsqmidaemon /system/vendor/bin/imsqmidaemon
     class main
     user system
     socket ims_qmid stream 0660 system radio
     group radio log diag
 
 # imsdatadaemon starts with root and UID will be downgraded to SYSTEM.
-service imsdatadaemon /system/vendor/bin/imsdatadaemon
+service vendor.imsdatadaemon /system/vendor/bin/imsdatadaemon
     class main
     user system
     socket ims_datad stream 0660 system radio
@@ -408,25 +387,27 @@ service imsdatadaemon /system/vendor/bin/imsdatadaemon
 service vendor.imsrcsservice /system/vendor/bin/imsrcsd
     class main
     user system
-    group radio diag inet log
-    disabled
+    group radio diag inet log wakelock
 
 on property:vendor.ims.QMI_DAEMON_STATUS=1
-    start imsdatadaemon
+    start vendor.imsdatadaemon
 
-service ims_rtp_daemon /system/vendor/bin/ims_rtp_daemon
+on property:vold.decrypt=trigger_restart_framework
+   start cnss_diag
+
+service cnss_diag /system/vendor/bin/cnss_diag -q -f -t HELIUM
+   class main
+   user system
+   group system wifi inet sdcard_rw media_rw diag
+   oneshot
+
+service vendor.ims_rtp_daemon /system/vendor/bin/ims_rtp_daemon
    class main
    user system
    group radio diag inet log
-   disabled
 
 on property:vendor.ims.DATA_DAEMON_STATUS=1
-    start ims_rtp_daemon
-## SMARTISAN_BEGIN:(CCM5026 Disabled imsrcsservice daemon)
-## houxioafei 2017-12-1. M0208205
-## cuipengfei 2018-04-25. Porting. M0249684
-#    start vendor.imsrcsservice
-## SMARTISAN_END: (CCM5026 Disabled imsrcsservice daemon)
+    restart vendor.ims_rtp_daemon
 
 service ppd /vendor/bin/mm-pp-dpps
     class late_start
@@ -435,13 +416,13 @@ service ppd /vendor/bin/mm-pp-dpps
     socket pps stream 0660 system system
     disabled
 
-on property:init.svc.hwcomposer-2-1=stopped
+on property:init.svc.vendor.hwcomposer-2-1=stopped
     stop ppd
 
-on property:init.svc.hwcomposer-2-1=running
+on property:init.svc.vendor.hwcomposer-2-1=running
     start ppd
 
-on property:init.svc.hwcomposer-2-1=restarting
+on property:init.svc.vendor.hwcomposer-2-1=restarting
     stop ppd
 
 #service nqs /system/bin/nqs
@@ -465,18 +446,11 @@ on property:init.svc.hwcomposer-2-1=restarting
 on charger
      setprop sys.usb.configfs 1
 
-/*
- * service hbtp /system/vendor/bin/hbtp_daemon
- *      class main
- *      user system
- *      group system
- *      disabled
- * 
- */
-service qfp-daemon /vendor/bin/qfp-daemon
-    class late_start
-    user system
-    group system drmrpc diag input
+service hbtp /system/vendor/bin/hbtp_daemon
+     class main
+     user system
+     group system
+     disabled
 
 service energy-awareness /system/vendor/bin/energy-awareness
     class main
@@ -484,13 +458,7 @@ service energy-awareness /system/vendor/bin/energy-awareness
     group system
     oneshot
 
-service seempd /system/bin/seempd
-    class late_start
-    user system
-    group system sdcard_rw
-    socket seempdw dgram 0666 system system
-
-service hvdcp_opti /system/vendor/bin/hvdcp_opti
+service vendor.hvdcp_opti /system/vendor/bin/hvdcp_opti
     class main
     user root
     group system wakelock
