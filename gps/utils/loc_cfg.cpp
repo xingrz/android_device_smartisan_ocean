@@ -37,7 +37,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <time.h>
-#include <grp.h>
+#include <pwd.h>
 #include <errno.h>
 #include <loc_cfg.h>
 #include <loc_pla.h>
@@ -57,12 +57,14 @@
 /* Parameter data */
 static uint32_t DEBUG_LEVEL = 0xff;
 static uint32_t TIMESTAMP = 0;
+static uint32_t LOC_MODEM_EMULATOR = 0;
 
 /* Parameter spec table */
 static const loc_param_s_type loc_param_table[] =
 {
-    {"DEBUG_LEVEL",    &DEBUG_LEVEL, NULL,    'n'},
-    {"TIMESTAMP",      &TIMESTAMP,   NULL,    'n'},
+    {"DEBUG_LEVEL",        &DEBUG_LEVEL,        NULL,    'n'},
+    {"TIMESTAMP",          &TIMESTAMP,          NULL,    'n'},
+    {"LOC_MODEM_EMULATOR", &LOC_MODEM_EMULATOR, NULL,    'n'},
 };
 static const int loc_param_num = sizeof(loc_param_table) / sizeof(loc_param_s_type);
 
@@ -84,6 +86,17 @@ const char LOC_PATH_SAP_CONF[] = LOC_PATH_SAP_CONF_STR;
 const char LOC_PATH_APDR_CONF[] = LOC_PATH_APDR_CONF_STR;
 const char LOC_PATH_XTWIFI_CONF[] = LOC_PATH_XTWIFI_CONF_STR;
 const char LOC_PATH_QUIPC_CONF[] = LOC_PATH_QUIPC_CONF_STR;
+
+/*===========================================================================
+FUNCTION loc_modem_emulator_enabled
+
+DESCRIPTION
+   Provides access to Modem Emulator config item.
+===========================================================================*/
+uint32_t loc_modem_emulator_enabled()
+{
+    return LOC_MODEM_EMULATOR;
+}
 
 /*===========================================================================
 FUNCTION loc_set_config_entry
@@ -395,9 +408,6 @@ void loc_read_conf(const char* conf_file_name, const loc_param_s_type* config_ta
                    uint32_t table_length)
 {
     FILE *conf_fp = NULL;
-    char *lasts;
-    loc_param_v_type config_value;
-    uint32_t i;
 
     if((conf_fp = fopen(conf_file_name, "r")) != NULL)
     {
@@ -457,7 +467,6 @@ typedef struct {
     unsigned int loc_feature_mask;
     char platform_list[LOC_MAX_PARAM_STRING];
     char baseband[LOC_MAX_PARAM_STRING];
-    char lean_targets[LOC_MAX_PARAM_STRING];
     unsigned int sglte_target;
     char feature_gtp_cell_proc[LOC_MAX_PARAM_STRING];
     char feature_gtp_waa[LOC_MAX_PARAM_STRING];
@@ -502,7 +511,6 @@ static const loc_param_s_type loc_process_conf_parameter_table[] = {
     {"IZAT_FEATURE_MASK",   &conf.loc_feature_mask,    NULL, 'n'},
     {"PLATFORMS",           &conf.platform_list,       NULL, 's'},
     {"BASEBAND",            &conf.baseband,            NULL, 's'},
-    {"LEAN_TARGETS",        &conf.lean_targets,        NULL, 's'},
     {"HARDWARE_TYPE",       &conf.auto_platform,       NULL, 's'},
 };
 
@@ -544,7 +552,6 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
     FILE* conf_fp = nullptr;
     char platform_name[PROPERTY_VALUE_MAX], baseband_name[PROPERTY_VALUE_MAX];
     char autoplatform_name[PROPERTY_VALUE_MAX];
-    int lean_target=0;
     unsigned int loc_service_mask=0;
     char config_mask = 0;
     unsigned char proc_list_length=0;
@@ -576,8 +583,6 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
     loc_get_platform_name(platform_name, sizeof(platform_name));
     //Get baseband name from ro.baseband property
     loc_get_target_baseband(baseband_name, sizeof(baseband_name));
-    lean_target = loc_identify_lean_target();
-    LOC_LOGD("%s:%d]: lean target:%d", __func__, __LINE__, lean_target);
     //Identify if this is an automotive platform
     loc_get_auto_platform_name(autoplatform_name,sizeof(autoplatform_name));
 
@@ -826,17 +831,18 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
 
         child_proc[j].num_groups = 0;
         ngroups = loc_util_split_string(conf.group_list, split_strings, MAX_NUM_STRINGS, ' ');
+#ifdef __ANDROID__
         for(i=0; i<ngroups; i++) {
-            struct group* grp = getgrnam(split_strings[i]);
-            if (grp) {
-                child_proc[j].group_list[i] = grp->gr_gid;
+            struct passwd* pwd = getpwnam(split_strings[i]);
+            if (pwd) {
+                child_proc[j].group_list[i] = pwd->pw_gid;
                 child_proc[j].num_groups++;
                 LOC_LOGD("%s:%d]:Group %s = %d matches child_group: %d\n",
                          __func__, __LINE__, split_strings[i],
-                         grp->gr_gid,child_proc[j].group_list[i]);
+                         pwd->pw_gid,child_proc[j].group_list[i]);
             }
         }
-
+#endif
         nstrings = loc_util_split_string(conf.platform_list, split_strings, MAX_NUM_STRINGS, ' ');
         if(strcmp("all", split_strings[0]) == 0) {
             if (nstrings == 1 || (nstrings == 2 && (strcmp("exclude", split_strings[1]) == 0))) {
@@ -915,13 +921,6 @@ int loc_read_process_conf(const char* conf_file_name, uint32_t * process_count_p
                     break;
                 }
             }
-        }
-
-        nstrings = loc_util_split_string(conf.lean_targets, split_strings, MAX_NUM_STRINGS, ' ');
-        if(!strcmp("DISABLED", split_strings[0]) && lean_target) {
-            LOC_LOGD("%s:%d]: Disabled for lean targets\n", __func__, __LINE__);
-            child_proc[j].proc_status = DISABLED;
-            continue;
         }
 
         if((config_mask & CONFIG_MASK_TARGET_CHECK) &&

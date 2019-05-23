@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2014, 2016-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2014, 2016-2018 The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -260,6 +260,12 @@ void LocApiBase::reportWwanZppFix(LocGpsLocation &zppLoc)
     TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportWwanZppFix(zppLoc));
 }
 
+void LocApiBase::reportOdcpiRequest(OdcpiRequestInfo& request)
+{
+    // loop through adapters, and deliver to the first handling adapter.
+    TO_1ST_HANDLING_LOCADAPTERS(mLocAdapters[i]->reportOdcpiRequestEvent(request));
+}
+
 void LocApiBase::reportSv(GnssSvNotification& svNotify)
 {
     const char* constellationString[] = { "Unknown", "GPS", "SBAS", "GLONASS",
@@ -275,7 +281,7 @@ void LocApiBase::reportSv(GnssSvNotification& svNotify)
             sizeof(constellationString) / sizeof(constellationString[0]) - 1) {
             svNotify.gnssSvs[i].type = GNSS_SV_TYPE_UNKNOWN;
         }
-        LOC_LOGV("   %03zu: %*s  %02d    %f    %f    %f   0x%02X",
+        LOC_LOGV("   %03zu: %*s  %02d    %f    %f    %f    %f    0x%02X",
             i,
             13,
             constellationString[svNotify.gnssSvs[i].type],
@@ -283,6 +289,7 @@ void LocApiBase::reportSv(GnssSvNotification& svNotify)
             svNotify.gnssSvs[i].cN0Dbhz,
             svNotify.gnssSvs[i].elevation,
             svNotify.gnssSvs[i].azimuth,
+            svNotify.gnssSvs[i].carrierFrequencyHz,
             svNotify.gnssSvs[i].gnssSvOptionsMask);
     }
     // loop through adapters, and deliver to all adapters.
@@ -434,6 +441,10 @@ DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
 
 enum loc_api_adapter_err LocApiBase::
     injectPosition(double /*latitude*/, double /*longitude*/, float /*accuracy*/)
+DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
+
+enum loc_api_adapter_err LocApiBase::
+    injectPosition(const Location& /*location*/)
 DEFAULT_IMPL(LOC_API_ADAPTER_ERR_SUCCESS)
 
 enum loc_api_adapter_err LocApiBase::
