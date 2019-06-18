@@ -21,9 +21,9 @@ PRODUCT_RELEASE_NAME := ocean
 $(call inherit-product, build/target/product/embedded.mk)
 
 # Inherit some common MK stuff.
-$(call inherit-product, vendor/mk/config/common.mk)
+$(call inherit-product, vendor/omni/config/common.mk)
 
-PRODUCT_NAME := mk_ocean
+PRODUCT_NAME := omni_ocean
 PRODUCT_BRAND := SMARTISAN
 PRODUCT_DEVICE := ocean
 PRODUCT_MANUFACTURER := smartisan
