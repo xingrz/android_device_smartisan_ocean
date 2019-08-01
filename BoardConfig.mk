@@ -97,8 +97,3 @@ TW_THEME := portrait_hdpi
 TW_USE_TOOLBOX := true
 TW_IGNORE_MISC_WIPE_DATA := true
 TW_USE_LEDS_HAPTICS := true
-
-# Workaround to build busybox on newer macOS
-ifeq ($(HOST_OS),darwin)
-MACOSX_DEPLOYMENT_TARGET := 10.9
-endif
